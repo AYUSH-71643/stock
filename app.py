@@ -48,38 +48,65 @@ if run_btn:
     else:
         cfg = Config(ticker=ticker, forecast_days=forecast_days, show_plot=False)
     
-    with st.spinner(f"Fetching Data for {ticker}..."):
-        raw = data.fetch_data(ticker, cfg.start, cfg.end, cfg.refresh)
-        prices, report = data.clean_data(raw)
-        
-    with st.spinner("Engineering Technical Features..."):
-        feats = features.add_features(prices)
-        dataset = features.make_supervised(feats)
-        test_start = prices.index[-1] - pd.Timedelta(days=365)
-        train, test = features.split_by_date(dataset, test_start)
-        
-    with st.spinner("Training Machine Learning Models (LR, RF, LSTM)..."):
-        trained, predicted_returns = {}, {}
-        for name, model in models.build_models().items():
-            trained[name] = models.fit(model, train)
-            predicted_returns[name] = models.predict_returns(model, test)
+        with st.spinner(f"Fetching Data for {ticker}..."):
+            raw = data.fetch_data(ticker, cfg.start, cfg.end, cfg.refresh)
+            prices, report = data.clean_data(raw)
             
-    with st.spinner("Evaluating & Forecasting..."):
-        names = list(trained)
-        backtest = evaluation.build_backtest_frame(test, predicted_returns)
-        metrics = evaluation.metrics_table(backtest, names)
-        equity = evaluation.strategy_equity(backtest, names)
-        best_ml = metrics.loc[names, "RMSE"].idxmin()
-        
-        final_model = models.fit(models.build_models()[best_ml], dataset)
-        error_std = float((backtest["Actual_Return"] - backtest[f"PredReturn_{best_ml}"]).std())
-        future = forecast.forecast_future(final_model, prices, forecast_days, error_std)
-        
-        # Generate interactive Plotly dashboard
-        from stock_predictor import visualize_plotly
-        fig = visualize_plotly.plot_interactive_dashboard(
-            ticker, feats, backtest, metrics, equity, future, best_ml, test_start
-        )
+        with st.spinner("Engineering Technical Features..."):
+            feats = features.add_features(prices)
+            dataset = features.make_supervised(feats)
+            test_start = prices.index[-1] - pd.Timedelta(days=365)
+            train, test = features.split_by_date(dataset, test_start)
+            
+        with st.spinner("Training Machine Learning Models (LR, RF, LSTM)..."):
+            trained, predicted_returns = {}, {}
+            for name, model in models.build_models().items():
+                trained[name] = models.fit(model, train)
+                predicted_returns[name] = models.predict_returns(model, test)
+                
+        with st.spinner("Evaluating & Forecasting..."):
+            names = list(trained)
+            backtest = evaluation.build_backtest_frame(test, predicted_returns)
+            metrics = evaluation.metrics_table(backtest, names)
+            equity = evaluation.strategy_equity(backtest, names)
+            best_ml = metrics.loc[names, "RMSE"].idxmin()
+            
+            final_model = models.fit(models.build_models()[best_ml], dataset)
+            error_std = float((backtest["Actual_Return"] - backtest[f"PredReturn_{best_ml}"]).std())
+            future = forecast.forecast_future(final_model, prices, forecast_days, error_std)
+            
+            # Save results to session state so it doesn't reload on every click
+            st.session_state["pipeline_results"] = {
+                "ticker": ticker,
+                "prices": prices,
+                "feats": feats,
+                "backtest": backtest,
+                "metrics": metrics,
+                "equity": equity,
+                "future": future,
+                "best_ml": best_ml,
+                "test_start": test_start,
+                "raw_data": raw
+            }
+
+if "pipeline_results" in st.session_state:
+    res = st.session_state["pipeline_results"]
+    ticker = res["ticker"]
+    prices = res["prices"]
+    feats = res["feats"]
+    backtest = res["backtest"]
+    metrics = res["metrics"]
+    equity = res["equity"]
+    future = res["future"]
+    best_ml = res["best_ml"]
+    test_start = res["test_start"]
+    raw_data = res["raw_data"]
+
+    # Generate interactive Plotly dashboard
+    from stock_predictor import visualize_plotly
+    fig = visualize_plotly.plot_interactive_dashboard(
+        ticker, feats, backtest, metrics, equity, future, best_ml, test_start
+    )
 
     # Layout Results
     st.success(f"Pipeline complete! Best performing model on test data: **{best_ml}**")
