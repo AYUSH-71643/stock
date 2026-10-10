@@ -34,8 +34,8 @@ def plot_interactive_dashboard(
             "RSI (14) - Momentum",
             "Strategy Backtest: $1 Invested (Long when model predicts up)"
         ),
-        vertical_spacing=0.1,
-        horizontal_spacing=0.08
+        vertical_spacing=0.15,
+        horizontal_spacing=0.12
     )
 
     # 1. Main Price Chart
@@ -74,14 +74,18 @@ def plot_interactive_dashboard(
     fig.add_hline(y=1, line_color="#30363d", row=3, col=2)
 
     fig.update_layout(
-        height=1000,
+        height=1100,
         template="plotly_dark",
         paper_bgcolor="#0d1117",
         plot_bgcolor="#161b22",
         hovermode="x unified",
         title_text=f"<b>{ticker.upper()}</b> Stock Analysis (Interactive)",
         title_x=0.5,
-        title_font_size=20
+        title_font_size=20,
+        showlegend=False,  # Turn off default side legend to avoid squishing
+        margin=dict(l=40, r=40, t=80, b=40)
     )
+    
+    # We will let hover-tooltips act as the legend to save space
     
     return fig
