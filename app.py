@@ -133,6 +133,7 @@ if "pipeline_results" in st.session_state:
         st.write("---")
         
         news_items = nlp.get_recent_news_sentiment(ticker)
+        avg_score = 0.0
         if news_items:
             avg_score, sentiment = nlp.aggregate_sentiment(news_items)
             st.metric("Market Mood", sentiment, f"{avg_score:+.2f} VADER Score")
@@ -153,18 +154,18 @@ if "pipeline_results" in st.session_state:
     st.markdown("Yeh bot virtual money use karke AI ki prediction ke hisaab se trade karta hai. Aapko starting mein **1,00,000 (Virtual Money)** mila hai!")
     
     current_price = prices["Close"].iloc[-1]
-    recommendation = trading.get_ai_recommendation(future, current_price)
+    recommendation = trading.get_ai_recommendation(future, current_price, hype.get("trend", "STABLE"), avg_score)
     
     col_bot1, col_bot2 = st.columns([1, 2])
     
     with col_bot1:
         st.subheader("💡 AI Suggestion")
-        if recommendation == "BUY":
-            st.success(f"**{recommendation}** (Price is expected to go UP)")
-        elif recommendation == "SELL":
-            st.error(f"**{recommendation}** (Price is expected to go DOWN)")
+        if "BUY" in recommendation:
+            st.success(f"**{recommendation}**")
+        elif "SELL" in recommendation:
+            st.error(f"**{recommendation}**")
         else:
-            st.warning(f"**{recommendation}** (Not enough movement expected)")
+            st.warning(f"**{recommendation}**")
             
         st.metric(label=f"Current Price of {ticker}", value=f"{current_price:,.2f}")
         

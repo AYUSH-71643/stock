@@ -78,18 +78,40 @@ def execute_trade(ticker: str, action: str, shares: float, price: float) -> tupl
     _save_portfolio(pf)
     return True, f"Successfully {action} {shares} shares of {ticker} at {price:.2f}"
 
-def get_ai_recommendation(forecast_df, current_price) -> str:
-    """Analyze the forecast to recommend BUY, SELL, or HOLD."""
+def get_ai_recommendation(forecast_df, current_price, hype_trend="STABLE", news_score=0.0) -> str:
+    """Analyze forecast and sentiment to recommend BUY, SELL, or HOLD."""
     if forecast_df.empty:
         return "HOLD"
         
-    # Look at the price 30 days from now
     future_price = forecast_df["Predicted_Close"].iloc[-1]
     percent_change = ((future_price - current_price) / current_price) * 100
     
+    # Base recommendation from ML models (Technicals & Price)
     if percent_change > 3.0:
-        return "BUY"
+        base_rec = "BUY"
     elif percent_change < -3.0:
-        return "SELL"
+        base_rec = "SELL"
     else:
-        return "HOLD"
+        base_rec = "HOLD"
+        
+    # Phase 2 Blend: Adjust based on Public Hype & News Sentiment
+    # If ML says BUY, but Hype is Falling AND Sentiment is Negative -> Downgrade to HOLD
+    if base_rec == "BUY":
+        if "FALLING" in hype_trend and news_score < 0:
+            return "HOLD (ML says UP, but Hype & News are crashing!)"
+        return f"BUY (ML expects {percent_change:+.1f}%)"
+        
+    # If ML says SELL, but Hype is Rising AND Sentiment is Positive -> Upgrade to HOLD
+    elif base_rec == "SELL":
+        if "RISING" in hype_trend and news_score > 0:
+            return "HOLD (ML says DOWN, but Hype & News are very strong!)"
+        return f"SELL (ML expects {percent_change:+.1f}%)"
+        
+    else:
+        # If ML is unsure, let Sentiment decide slightly
+        if "RISING" in hype_trend and news_score > 0.5:
+            return "BUY (ML is neutral, but strong Hype & News!)"
+        elif "FALLING" in hype_trend and news_score < -0.5:
+            return "SELL (ML is neutral, but Hype & News are crashing!)"
+            
+        return f"HOLD (Market is flat, expects {percent_change:+.1f}%)"
