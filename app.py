@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")  # headless backend for streamlit
 
-from stock_predictor import data, features, models, evaluation, forecast, visualize, nlp
+from stock_predictor import data, features, models, evaluation, forecast, visualize, nlp, trading
 from stock_predictor.config import Config, OUTPUT_DIR
 
 st.set_page_config(page_title="Stock Price Predictor", page_icon="📈", layout="wide")
@@ -118,3 +118,60 @@ if run_btn:
             
         st.subheader("📉 Test Year Performance")
         st.dataframe(metrics.style.format("{:.3f}"), use_container_width=True)
+        
+    st.write("---")
+    
+    # PHASE 3: Virtual Trading Bot
+    st.header("🤖 AI Virtual Trading Bot (Paper Trading)")
+    st.markdown("Yeh bot virtual money use karke AI ki prediction ke hisaab se trade karta hai. Aapko starting mein **1,00,000 (Virtual Money)** mila hai!")
+    
+    current_price = prices["Close"].iloc[-1]
+    recommendation = trading.get_ai_recommendation(future, current_price)
+    
+    col_bot1, col_bot2 = st.columns([1, 2])
+    
+    with col_bot1:
+        st.subheader("💡 AI Suggestion")
+        if recommendation == "BUY":
+            st.success(f"**{recommendation}** (Price is expected to go UP)")
+        elif recommendation == "SELL":
+            st.error(f"**{recommendation}** (Price is expected to go DOWN)")
+        else:
+            st.warning(f"**{recommendation}** (Not enough movement expected)")
+            
+        st.metric(label=f"Current Price of {ticker}", value=f"{current_price:,.2f}")
+        
+        trade_qty = st.number_input("Shares to Trade", min_value=1, value=10)
+        
+        c1, c2 = st.columns(2)
+        if c1.button("🟢 BUY", use_container_width=True):
+            success, msg = trading.execute_trade(ticker, "BUY", trade_qty, current_price)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
+                
+        if c2.button("🔴 SELL", use_container_width=True):
+            success, msg = trading.execute_trade(ticker, "SELL", trade_qty, current_price)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
+                
+    with col_bot2:
+        st.subheader("💼 Your Portfolio")
+        pf = trading.get_portfolio()
+        st.metric("Available Balance", f"{pf['balance']:,.2f}")
+        
+        if pf["positions"]:
+            import pandas as pd
+            pos_df = pd.DataFrame.from_dict(pf["positions"], orient="index")
+            pos_df["Current Price"] = current_price # (Simplified: only shows current price for active ticker)
+            pos_df["Profit/Loss"] = (pos_df["Current Price"] - pos_df["avg_price"]) * pos_df["shares"]
+            st.dataframe(pos_df.style.format("{:.2f}").map(lambda x: 'color: green' if x > 0 else 'color: red', subset=['Profit/Loss']), use_container_width=True)
+        else:
+            st.info("No active positions. Buy some shares!")
+            
+        if pf["history"]:
+            with st.expander("Show Trade History"):
+                st.dataframe(pf["history"][::-1]) # Show newest first
