@@ -161,3 +161,30 @@ def clean_data(df: pd.DataFrame) -> tuple[pd.DataFrame, CleaningReport]:
     if report.rows_out == 0:
         raise ValueError("No usable rows remain after cleaning.")
     return out, report
+
+def get_fundamentals(ticker: str) -> dict:
+    """Fetch fundamental data like P/E, EPS, Market Cap."""
+    import yfinance as yf
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info
+        return {
+            "PE": info.get("trailingPE", "N/A"),
+            "EPS": info.get("trailingEps", "N/A"),
+            "MarketCap": info.get("marketCap", "N/A"),
+            "Industry": info.get("industry", "N/A"),
+            "Name": info.get("longName", ticker)
+        }
+    except Exception:
+        return {}
+        
+def get_vix() -> float:
+    """Fetch current India VIX (or US VIX) to measure Market Fear."""
+    import yfinance as yf
+    try:
+        vix = yf.download("^INDIAVIX", period="1d", progress=False)
+        if vix.empty:
+            vix = yf.download("^VIX", period="1d", progress=False) # Fallback to US
+        return float(vix["Close"].iloc[-1])
+    except Exception:
+        return 0.0

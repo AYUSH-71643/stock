@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")  # headless backend for streamlit
 
-from stock_predictor import data, features, models, evaluation, forecast, visualize, nlp, trading
+from stock_predictor import data, features, models, evaluation, forecast, visualize, nlp, trading, report, scanner, alerts
 from stock_predictor.config import Config, OUTPUT_DIR
 
 st.set_page_config(page_title="Stock Price Predictor", page_icon="📈", layout="wide")
@@ -41,6 +41,30 @@ with st.sidebar:
     forecast_days = st.slider("Forecast Days", min_value=5, max_value=60, value=30)
     st.markdown("---")
     run_btn = st.button("Predict", type="primary")
+    
+    st.markdown("---")
+    st.subheader("🏆 Today's Market Leaderboard")
+    if st.button("Scan Top Stocks"):
+        with st.spinner("Scanning Market..."):
+            leaderboard = scanner.get_market_leaderboard(list(TICKERS.keys())[:-1]) # exclude 'OTHER'
+            if not leaderboard.empty:
+                st.dataframe(
+                    leaderboard.style.format({
+                        "Last Price": "{:.2f}", 
+                        "% Change (Today)": "{:+.2f}%", 
+                        "Volume": "{:,.0f}"
+                    }).map(lambda x: 'color: green' if x > 0 else 'color: red', subset=['% Change (Today)']),
+                    use_container_width=True
+                )
+                
+    st.markdown("---")
+    st.subheader("🔔 Telegram Alerts")
+    if st.button("Send Test Alert"):
+        success = alerts.send_telegram_alert(f"🤖 *AI Stock Predictor*\nTest alert successful! Ready to send daily trading signals.")
+        if success:
+            st.success("Alert sent to Telegram!")
+        else:
+            st.error("Missing Bot Token! Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to secrets.toml")
 
 if run_btn:
     if not ticker.strip():
@@ -75,6 +99,9 @@ if run_btn:
             error_std = float((backtest["Actual_Return"] - backtest[f"PredReturn_{best_ml}"]).std())
             future = forecast.forecast_future(final_model, prices, forecast_days, error_std)
             
+            vix = data.get_vix()
+            funds = data.get_fundamentals(ticker)
+            
             # Save results to session state so it doesn't reload on every click
             st.session_state["pipeline_results"] = {
                 "ticker": ticker,
@@ -86,7 +113,9 @@ if run_btn:
                 "future": future,
                 "best_ml": best_ml,
                 "test_start": test_start,
-                "raw_data": raw
+                "raw_data": raw,
+                "vix": vix,
+                "funds": funds
             }
 
 if "pipeline_results" in st.session_state:
@@ -101,6 +130,8 @@ if "pipeline_results" in st.session_state:
     best_ml = res["best_ml"]
     test_start = res["test_start"]
     raw_data = res["raw_data"]
+    vix = res.get("vix", 0.0)
+    funds = res.get("funds", {})
 
     # Generate interactive Plotly dashboard
     from stock_predictor import visualize_plotly
@@ -111,6 +142,26 @@ if "pipeline_results" in st.session_state:
     # Layout Results
     st.success(f"Pipeline complete! Best performing model on test data: **{best_ml}**")
     
+    # PDF Report Download
+    pdf_bytes = report.generate_pdf_report(
+        ticker=ticker,
+        current_price=prices["Close"].iloc[-1],
+        future_price=future["Predicted_Close"].iloc[-1],
+        best_ml=best_ml,
+        hype_trend="UNKNOWN", # Will be updated dynamically if needed, or we just pass a simple string
+        sentiment_score=0.0,
+        vix=vix,
+        funds=funds
+    )
+    
+    st.download_button(
+        label="📄 Download AI Report (PDF)",
+        data=pdf_bytes,
+        file_name=f"{ticker}_AI_Report.pdf",
+        mime="application/pdf",
+        type="primary"
+    )
+    
     col1, col2 = st.columns([2, 1])
     
     with col1:
@@ -118,6 +169,18 @@ if "pipeline_results" in st.session_state:
         st.plotly_chart(fig, use_container_width=True)
         
     with col2:
+        st.subheader("🏢 Company Fundamentals & VIX")
+        if funds:
+            c1, c2 = st.columns(2)
+            c1.metric("P/E Ratio", funds.get("PE", "N/A"))
+            c2.metric("EPS", funds.get("EPS", "N/A"))
+            st.caption(f"Industry: {funds.get('Industry', 'N/A')}")
+            
+        vix_color = "red" if vix > 20 else "green" # High VIX = Fear
+        vix_status = "Fear (High Volatility)" if vix > 20 else "Greed (Stable Market)"
+        st.markdown(f"**Market VIX Index (Fear/Greed):** :{vix_color}[{vix:.2f}] - {vix_status}")
+        
+        st.write("---")
         st.subheader("📰 Real-time NLP Sentiment & Hype")
         
         hype = nlp.get_wikipedia_hype(ticker)
