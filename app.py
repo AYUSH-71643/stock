@@ -91,7 +91,20 @@ if run_btn:
         st.plotly_chart(fig, use_container_width=True)
         
     with col2:
-        st.subheader("📰 Real-time NLP Sentiment")
+        st.subheader("📰 Real-time NLP Sentiment & Hype")
+        
+        hype = nlp.get_wikipedia_hype(ticker)
+        if hype["views"] > 0:
+            st.markdown(f"**Wikipedia Search Hype (Last 7 Days)**: {hype['views']:,} views")
+            if "RISING" in hype["trend"]:
+                st.success(f"Trend: {hype['trend']} (+{hype['change']:.1f}%)")
+            elif "FALLING" in hype["trend"]:
+                st.error(f"Trend: {hype['trend']} ({hype['change']:.1f}%)")
+            else:
+                st.info(f"Trend: {hype['trend']} ({hype['change']:.1f}%)")
+                
+        st.write("---")
+        
         news_items = nlp.get_recent_news_sentiment(ticker)
         if news_items:
             avg_score, sentiment = nlp.aggregate_sentiment(news_items)
