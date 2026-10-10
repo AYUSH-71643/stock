@@ -27,16 +27,26 @@ with st.sidebar:
         "TATAMOTORS.NS": "TATAMOTORS.NS (Tata Motors)",
         "HDFCBANK.NS": "HDFCBANK.NS (HDFC Bank)",
         "ZOMATO.NS": "ZOMATO.NS (Zomato)",
-        "INFY.NS": "INFY.NS (Infosys)"
+        "INFY.NS": "INFY.NS (Infosys)",
+        "OTHER": "➕ Other"
     }
     
-    ticker = st.selectbox("Ticker Symbol", options=list(TICKERS.keys()), format_func=lambda x: TICKERS[x])
+    selected_option = st.selectbox("Ticker Symbol", options=list(TICKERS.keys()), format_func=lambda x: TICKERS[x])
+    
+    if selected_option == "OTHER":
+        ticker = st.text_input("Enter Other Ticker (e.g. META, BTC-USD)", value="").upper()
+    else:
+        ticker = selected_option
+        
     forecast_days = st.slider("Forecast Days", min_value=5, max_value=60, value=30)
     st.markdown("---")
     run_btn = st.button("Run ML Pipeline", type="primary")
 
 if run_btn:
-    cfg = Config(ticker=ticker, forecast_days=forecast_days, show_plot=False)
+    if not ticker.strip():
+        st.error("⚠️ Please enter a valid Ticker Symbol before running the pipeline.")
+    else:
+        cfg = Config(ticker=ticker, forecast_days=forecast_days, show_plot=False)
     
     with st.spinner(f"Fetching Data for {ticker}..."):
         raw = data.fetch_data(ticker, cfg.start, cfg.end, cfg.refresh)
