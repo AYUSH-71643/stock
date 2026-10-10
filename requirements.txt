@@ -8,3 +8,4 @@ vaderSentiment>=3.3.2
 streamlit>=1.30.0
 plotly>=5.20.0
 praw>=7.7.1
+fpdf>=1.7.2
