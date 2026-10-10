@@ -74,7 +74,7 @@ if run_btn:
     
         with st.spinner(f"Fetching Data for {ticker}..."):
             raw = data.fetch_data(ticker, cfg.start, cfg.end, cfg.refresh)
-            prices, report = data.clean_data(raw)
+            prices, clean_report = data.clean_data(raw)
             
         with st.spinner("Engineering Technical Features..."):
             feats = features.add_features(prices)
