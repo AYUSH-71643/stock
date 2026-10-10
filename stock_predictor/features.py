@@ -36,8 +36,10 @@ FEATURE_COLUMNS = [
     "Return_Lag_2",
     "Return_Lag_3",
     # Risk & activity
-    "Volatility_20",
     "Volume_Ratio_20",
+    # Macro-Economic
+    "Macro_Return_1d",
+    "Macro_Return_5d",
 ]
 
 
@@ -84,6 +86,14 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["Volatility_20"] = out["Return_1d"].rolling(20).std()
     volume_ma = volume.rolling(20).mean().replace(0, np.nan)
     out["Volume_Ratio_20"] = (volume / volume_ma - 1).fillna(0)
+    
+    if "Macro_Close" in out:
+        out["Macro_Close"] = out["Macro_Close"].ffill()
+        out["Macro_Return_1d"] = out["Macro_Close"].pct_change(1).fillna(0)
+        out["Macro_Return_5d"] = out["Macro_Close"].pct_change(5).fillna(0)
+    else:
+        out["Macro_Return_1d"] = 0.0
+        out["Macro_Return_5d"] = 0.0
 
     return out.replace([np.inf, -np.inf], np.nan)
 

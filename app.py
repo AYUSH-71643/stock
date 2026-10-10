@@ -75,12 +75,10 @@ if run_btn:
         error_std = float((backtest["Actual_Return"] - backtest[f"PredReturn_{best_ml}"]).std())
         future = forecast.forecast_future(final_model, prices, forecast_days, error_std)
         
-        # Save output so we can show the chart
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        chart_path = OUTPUT_DIR / f"{ticker}_dashboard.png"
-        visualize.plot_dashboard(
-            ticker, feats, backtest, metrics, equity, future, best_ml, test_start,
-            chart_path, show=False
+        # Generate interactive Plotly dashboard
+        from stock_predictor import visualize_plotly
+        fig = visualize_plotly.plot_interactive_dashboard(
+            ticker, feats, backtest, metrics, equity, future, best_ml, test_start
         )
 
     # Layout Results
@@ -90,8 +88,7 @@ if run_btn:
     
     with col1:
         st.subheader("📊 Price Forecast & Backtest Dashboard")
-        from PIL import Image
-        st.image(Image.open(chart_path), use_column_width=True)
+        st.plotly_chart(fig, use_container_width=True)
         
     with col2:
         st.subheader("📰 Real-time NLP Sentiment")

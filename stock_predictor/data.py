@@ -72,6 +72,15 @@ def fetch_data(ticker: str, start: str, end: str | None = None, refresh: bool = 
             f"internet connection. Details: {error or 'Yahoo Finance returned no rows.'}"
         )
 
+    # Fetch Macro Economic Benchmark (Phase 1 Upgrade)
+    benchmark_ticker = "^NSEI" if ticker.endswith(".NS") or ticker.endswith(".BO") else "^GSPC"
+    try:
+        bench_raw = _download(benchmark_ticker, start, end)
+        if not bench_raw.empty:
+            raw["Macro_Close"] = bench_raw["Close"]
+    except Exception:
+        pass  # If macro fails, we just won't have it
+
     raw.to_csv(path)
     print(f"[data] Saved {len(raw):,} rows to {path.name}")
     return raw
