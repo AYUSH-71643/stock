@@ -90,7 +90,8 @@ if run_btn:
     
     with col1:
         st.subheader("📊 Price Forecast & Backtest Dashboard")
-        st.image(str(chart_path), use_column_width=True)
+        from PIL import Image
+        st.image(Image.open(chart_path), use_column_width=True)
         
     with col2:
         st.subheader("📰 Real-time NLP Sentiment")
