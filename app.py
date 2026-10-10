@@ -40,7 +40,7 @@ with st.sidebar:
         
     forecast_days = st.slider("Forecast Days", min_value=5, max_value=60, value=30)
     st.markdown("---")
-    run_btn = st.button("Run ML Pipeline", type="primary")
+    run_btn = st.button("Predict", type="primary")
 
 if run_btn:
     if not ticker.strip():
