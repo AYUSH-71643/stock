@@ -33,3 +33,4 @@ outputs/
 *.csv
 *.png
 .streamlit/secrets.toml
+scratch/
