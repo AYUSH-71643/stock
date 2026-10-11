@@ -214,7 +214,6 @@ if "pipeline_results" in st.session_state:
     
     # PHASE 3: Virtual Trading Bot
     st.header("🤖 AI Virtual Trading Bot (Paper Trading)")
-    st.markdown("Yeh bot virtual money use karke AI ki prediction ke hisaab se trade karta hai. Aapko starting mein **1,00,000 (Virtual Money)** mila hai!")
     
     current_price = prices["Close"].iloc[-1]
     recommendation = trading.get_ai_recommendation(future, current_price, hype.get("trend", "STABLE"), avg_score)
